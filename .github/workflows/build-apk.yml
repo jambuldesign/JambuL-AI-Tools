@@ -22,6 +22,11 @@ jobs:
       - name: Find Android project
         run: |
           SETTINGS=$(find project -name settings.gradle.kts -o -name settings.gradle | head -n 1)
+          if [ -z "$SETTINGS" ]; then
+            echo "settings.gradle.kts/settings.gradle tidak ditemukan."
+            find project -maxdepth 4 -type f | head -100
+            exit 1
+          fi
           echo "Found project: $SETTINGS"
           echo "PROJECT_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
 
@@ -34,20 +39,21 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Build APK
-  run: |
-    cd "$PROJECT_DIR"
+      - name: Install Gradle 8.10.2
+        run: |
+          curl -L -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.10.2-bin.zip
+          unzip -q /tmp/gradle.zip -d /opt
+          echo "/opt/gradle-8.10.2/bin" >> "$GITHUB_PATH"
 
-    if command -v gradle >/dev/null 2>&1; then
-      gradle assembleDebug
-    else
-      echo "Gradle tidak ditemukan di runner."
-      exit 1
-    fi
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+          gradle --version
+          gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: JambuL-AI-Tools-APK
-          path: |
-            **/build/outputs/apk/debug/*.apk
+          path: '**/build/outputs/apk/debug/*.apk'
+          if-no-files-found: error
