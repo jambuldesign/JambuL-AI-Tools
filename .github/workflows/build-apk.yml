@@ -46,9 +46,18 @@ jobs:
         run: |
           cd "$PROJECT_DIR"
           printf '\norg.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n' >> gradle.properties
-          if [ -f build.gradle.kts ]; then
-            printf '\n// CI JVM compatibility\ntasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach { compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }\ntasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach { options.release.set(17) }\n' >> build.gradle.kts
-          fi
+          cat >> build.gradle.kts <<'EOF'
+
+// CI JVM compatibility: apply to every Android subproject.
+subprojects {
+    tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
+        options.release.set(17)
+    }
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+EOF
 
       - name: Build debug APK
         run: |
