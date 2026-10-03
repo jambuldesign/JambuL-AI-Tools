@@ -1,0 +1,54 @@
+name: Build JambuL AI Tools APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract project ZIP
+        run: |
+          mkdir -p project
+          unzip -q JambuL_AI_Tools_APK_CloudBuild*.zip -d project
+
+      - name: Find Android project
+        run: |
+          SETTINGS=$(find project -name settings.gradle.kts -o -name settings.gradle | head -n 1)
+          echo "Found project: $SETTINGS"
+          echo "PROJECT_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleDebug
+          else
+            echo "Gradle wrapper tidak ditemukan."
+            exit 1
+          fi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JambuL-AI-Tools-APK
+          path: |
+            **/build/outputs/apk/debug/*.apk
