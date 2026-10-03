@@ -35,16 +35,15 @@ jobs:
         uses: android-actions/setup-android@v4
 
       - name: Build APK
-        run: |
-          cd "$PROJECT_DIR"
+  run: |
+    cd "$PROJECT_DIR"
 
-          if [ -f "./gradlew" ]; then
-            chmod +x ./gradlew
-            ./gradlew assembleDebug
-          else
-            echo "Gradle wrapper tidak ditemukan."
-            exit 1
-          fi
+    if command -v gradle >/dev/null 2>&1; then
+      gradle assembleDebug
+    else
+      echo "Gradle tidak ditemukan di runner."
+      exit 1
+    fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
