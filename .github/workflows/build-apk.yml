@@ -3,32 +3,30 @@ name: Build JambuL AI Tools APK
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract project ZIP
+      - name: Locate Android project
         run: |
-          mkdir -p project
-          unzip -q JambuL_AI_Tools_APK_CloudBuild*.zip -d project
-
-      - name: Find Android project
-        run: |
-          SETTINGS=$(find project -name settings.gradle.kts -o -name settings.gradle | head -n 1)
+          ZIP=$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)
+          if [ -n "$ZIP" ]; then
+            mkdir -p project
+            unzip -q "$ZIP" -d project
+          fi
+          SETTINGS=$(find . -type f \( -name settings.gradle.kts -o -name settings.gradle \) -not -path './.git/*' | head -n 1)
           if [ -z "$SETTINGS" ]; then
-            echo "settings.gradle.kts/settings.gradle tidak ditemukan."
-            find project -maxdepth 4 -type f | head -100
+            echo 'Android Gradle project not found.'
+            find . -maxdepth 5 -type f | head -150
             exit 1
           fi
-          echo "Found project: $SETTINGS"
           echo "PROJECT_DIR=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
+          echo "Found: $SETTINGS"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -39,32 +37,22 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Install Gradle 8.10.2
-        run: |
-          curl -L -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.10.2-bin.zip
-          unzip -q /tmp/gradle.zip -d /opt
-          echo "/opt/gradle-8.10.2/bin" >> "$GITHUB_PATH"
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
 
-      - name: Align Java and Kotlin JVM targets
-        run: |
-          cd "$PROJECT_DIR"
-          cat >> build.gradle.kts <<'EOF'
-
-// CI compatibility: compile Java and Kotlin to the same JVM target.
-tasks.withType<JavaCompile>().configureEach {
-    sourceCompatibility = "17"
-    targetCompatibility = "17"
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-    kotlinOptions.jvmTarget = "17"
-}
-EOF
-
-      - name: Build APK
+      - name: Configure JVM compatibility
         run: |
           cd "$PROJECT_DIR"
-          gradle --version
+          printf '\norg.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n' >> gradle.properties
+          if [ -f build.gradle.kts ]; then
+            printf '\n// CI JVM compatibility\ntasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach { compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }\n' >> build.gradle.kts
+          fi
+
+      - name: Build debug APK
+        run: |
+          cd "$PROJECT_DIR"
           gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
