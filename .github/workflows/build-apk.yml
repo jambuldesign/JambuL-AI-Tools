@@ -45,6 +45,22 @@ jobs:
           unzip -q /tmp/gradle.zip -d /opt
           echo "/opt/gradle-8.10.2/bin" >> "$GITHUB_PATH"
 
+      - name: Align Java and Kotlin JVM targets
+        run: |
+          cd "$PROJECT_DIR"
+          cat >> build.gradle.kts <<'EOF'
+
+// CI compatibility: compile Java and Kotlin to the same JVM target.
+tasks.withType<JavaCompile>().configureEach {
+    sourceCompatibility = "17"
+    targetCompatibility = "17"
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    kotlinOptions.jvmTarget = "17"
+}
+EOF
+
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
