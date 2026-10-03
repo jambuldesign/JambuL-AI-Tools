@@ -47,7 +47,7 @@ jobs:
           cd "$PROJECT_DIR"
           printf '\norg.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\n' >> gradle.properties
           if [ -f build.gradle.kts ]; then
-            printf '\n// CI JVM compatibility\ntasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach { compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }\n' >> build.gradle.kts
+            printf '\n// CI JVM compatibility\ntasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach { compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }\ntasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach { options.release.set(17) }\n' >> build.gradle.kts
           fi
 
       - name: Build debug APK
